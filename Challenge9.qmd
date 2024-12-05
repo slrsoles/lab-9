@@ -1,0 +1,147 @@
+---
+title: "Challenge9"
+format: html
+editor: visual
+code-tools: true
+embed-resources: true
+messages: false
+warnings: false
+---
+## Setup
+```{r}
+#| messages: false
+#| warnings: false
+library(kableExtra)
+library(tidyverse)
+library(gt)
+```
+
+## Load Data
+```{r}
+# Data from Lab 3
+#| messages: false
+#| warnings: false
+
+evals <- read_csv("teacher_evals.csv", show_col_types = FALSE) |> 
+  rename(sex = gender)
+```
+## Dataframe Formatting
+
+```{r}
+#| code-fold: true
+summary_table <- evals|>
+  group_by(teacher_id)|>
+  summarize(
+    sex = first(sex),
+    seniority = mean(seniority, na.rm = TRUE),
+    academic_degree = first(academic_degree),
+    .groups = "drop"
+  )|>
+  mutate(seniority_level = if_else(seniority <= 4, "Junior", "Senior"))|>
+  count(sex,seniority_level, academic_degree)|>
+  pivot_wider(names_from = c(sex, seniority_level, academic_degree), values_from = n)|>
+  summarize(
+    Male = sum(c(male_Junior_dr,
+                 male_Junior_ma,
+                 male_Junior_no_dgr,
+                 male_Junior_prof,
+                 male_Senior_dr,
+                 male_Senior_ma,
+                 male_Senior_no_dgr,
+                 male_Senior_prof), na.rm = TRUE),
+  Female = sum(c(female_Junior_dr,
+                 female_Junior_ma,
+                 female_Junior_no_dgr,
+                 female_Junior_prof,
+                 female_Senior_dr,
+                 female_Senior_ma), na.rm = TRUE),
+  "Junior (Less than 4 years)"  = sum(c(male_Junior_dr,
+                 male_Junior_ma,
+                 male_Junior_no_dgr,
+                 male_Junior_prof,
+                 female_Junior_dr,
+                 female_Junior_ma,
+                 female_Junior_no_dgr,
+                 female_Junior_prof), na.rm = TRUE),
+   "Senior (More than 4 years)" = sum(c(male_Senior_dr,
+                 male_Senior_ma,
+                 male_Senior_no_dgr,
+                 male_Senior_prof,
+                 female_Senior_dr,
+                 female_Senior_ma), na.rm = TRUE),
+  "No Degree" = sum(c(male_Senior_no_dgr,
+                    male_Junior_no_dgr,
+                    female_Junior_no_dgr), na.rm = TRUE),
+  Masters = sum(c(male_Senior_ma,
+                    male_Junior_ma,
+                    female_Junior_ma,
+                    female_Senior_ma), na.rm = TRUE),
+  Doctorate = sum(c(male_Senior_dr,
+                    male_Junior_dr,
+                    female_Junior_dr,
+                    female_Senior_dr), na.rm = TRUE),
+  Professor = sum(c(male_Senior_prof,
+                    male_Junior_prof,
+                    female_Junior_prof), na.rm = TRUE)
+  )
+```
+
+## Regular Dataframe Table
+
+```{r}
+#| code-fold: true
+summary_table
+```
+
+
+## Kable Table
+
+```{r}
+#| code-fold: true
+#| messages: false
+pretty_summary_table_kable <- summary_table|>
+   kable(caption = "Instructor Evaluations Demographics") |>
+   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "bordered"), 
+                 full_width = TRUE, 
+                 font_size = 14)
+pretty_summary_table_kable
+```
+
+
+## GT table
+
+```{r}
+#| code-fold: true
+#| messages: false
+pretty_summary_table_gt <- summary_table |>
+  gt() |>
+  tab_header(
+    title = "Instructor Evaluations Demographics"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "lightgray"),
+    locations = cells_body(rows = seq(1, nrow(summary_table), 2))
+  ) |>
+  tab_options(
+    table.font.size = px(14),
+    table.border.top.color = "black",
+    table.border.top.width = px(2),
+    table.border.bottom.color = "black",
+    table.border.bottom.width = px(2),
+    table.border.left.color = "black",
+    table.border.left.width = px(2),
+    table.border.right.color = "black",
+    table.border.right.width = px(2),  
+    row.striping.include_table_body = TRUE,  
+    row.striping.background_color = "lightgray", 
+    data_row.padding = px(5),  
+    column_labels.font.size = px(14), 
+    column_labels.font.weight = "bold",
+    column_labels.background.color = "lightblue", 
+    table.width = pct(100)  
+  )
+
+pretty_summary_table_gt
+
+```
+

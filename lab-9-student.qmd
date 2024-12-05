@@ -1,6 +1,6 @@
 ---
 title: "Lab 9: Data Simulation Exploration"
-author: "Your name here!"
+author: "Skylar Richards"
 format: html
 editor: source
 embed-resources: true
@@ -8,7 +8,8 @@ embed-resources: true
 
 ```{r}
 #| label: setup
-
+#| message: false
+library(tidyverse)
 
 ```
 
@@ -33,12 +34,16 @@ for it to be compatible with `map_int()`!
 ```{r}
 #| label: function-simulation-for-random-babies
 
-randomBabies <- function(nBabies){
-  ...
+randomBabies <- function(nBabies = 4){
+  step1 <- sample(1:nBabies, nBabies, replace = FALSE)
+  step2 <- sum(step1 == 1:nBabies)
+  return(step2)
+  
+#  return(sum(sample(1:nBabies, nBabies, replace = FALSE) == 1:nBabies))
 }
 
 results <- map_int(.x = 1:10000,
-                   .f = ___
+                   .f = ~randomBabies(4)
                    )
 ```
 
@@ -56,13 +61,15 @@ You may find the following code helpful:
 
 enframe(results, 
         name = "simulation_number", 
-        value = "ncorrect")
+        value = "ncorrect")|>
+  count(ncorrect, name = "Occurances")|>
+  pivot_wider(names_from = ncorrect, values_from = Occurances)
+  
 ```
 :::
 
 ```{r}
 #| label: table-for-random-babies
-
 
 ```
 
@@ -73,10 +80,28 @@ You may find the following code helpful:
 
 ```{r}
 #| eval: false
+results_long <- pivot_longer(
+  results_table,
+  cols = everything(),
+  names_to = "ncorrect",
+  values_to = "count")
+  
+results_long <- results_long |>
+  mutate(
+    proportion = count / sum(count),
+    ncorrect = as.numeric(ncorrect)  
+  )
 
-geom_bar(mapping = aes(y = after_stat(count) / sum(after_stat(count))
-                       )
-         )
+plot_babies <- ggplot(results_long, aes(x = ncorrect, y = proportion)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  labs(
+    x = "Number of Correct Assignments",
+    y = "",
+    title = "Proportion of Simulations"
+  ) +
+  scale_x_continuous(breaks = c(0,1,2,4))
+
+plot_babies
 ```
 :::
 
@@ -115,8 +140,8 @@ I've provided some skeleton code to get you started. :)
 
 ```{r}
 simulate_means <- function(n, df){
-  map_dbl(.x = ___, 
-          .f = ~rchisq(n = 100, ___) %>% mean()
+  map_dbl(.x = 1:n, 
+          .f = ~rchisq(n = 100, df =df) |> mean()
           )
 }
 ```
@@ -127,7 +152,7 @@ simulate_means <- function(n, df){
 -  **`df` = 10**
 
 ```{r}
-grid <- crossing(n = ___, 
+grid <- crossing(n = c(10, 100, 1000, 10000), 
                  df = 5)
 ```
 
@@ -140,10 +165,10 @@ You will want to use the `unnest()` function to extract the results of the
 
 ```{r}
 all_simulations <- grid |> 
-  mutate(simulated_means = pmap(.l = list(___), 
+  mutate(simulated_means = pmap(.l = list(n = n, df = df), 
                                 .f = simulate_means)
          ) |> 
-  unnest(___) 
+  unnest(simulated_means) 
 
 ```
 
@@ -153,7 +178,17 @@ Hint: Make sure your columns have descriptive names!
 ```{r}
 #| label: table-of-simulated Means
 
+mean_table <- all_simulations %>%
+  group_by(n) %>%
+  summarize(
+    `Mean of Simulations` = mean(simulated_means),
+    .groups = "drop"
+  )
+mean_table <- mean_table|>
+  rename("Sample Size (n)" = "n",
+         "Mean of Simulations (df = 5)" = "Mean of Simulations") 
 
+mean_table
 ```
 
 **8. Create a plot showing the distribution of simulated means from each of the simulations. Each simulation (10, 100, 1000, and 10000) should be its own facet!**
@@ -165,7 +200,16 @@ sizes between the simulations.
 
 ```{r}
 #| label: plot-of-simulated Means
-
+ggplot(all_simulations, aes(x = simulated_means)) +
+  geom_histogram(binwidth = 0.2, fill = "steelblue", color = "black", alpha = 0.7) +
+  facet_wrap(~n, scales = "free_y", 
+             labeller = as_labeller(c(`10` = "n = 10", `100` = "n = 100", 
+                                      `1000` = "n = 1000", `10000` = "n = 10000"))) +
+  labs(
+    title = "Distribution of Simulated Means by Sample Size",
+    x = "Simulated Means",
+    y = "Frequency"
+)
 
 ```
 
